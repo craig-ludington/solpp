@@ -10,8 +10,6 @@
               {(second (re-matches #"^.*/(.*\.sol)$" path)) (s/split-lines (slurp path))}))
        (reduce into {})))
 
-#_ (map-contracts "/Users/craig/kwhcoin/solpp/contracts")
-
 (defn pragma? [line]
   (and line (re-find #"^pragma .*$" line)))
 
@@ -20,35 +18,30 @@
 
 (defn inline* [idx base-name visited]
   (loop [lines        (idx base-name)
-         visited      visited
          acc          []]
     (let [line          (first lines)
           import        (import? line)
-          novel-import? (and import (not (visited import)))
-          skip-pragma?  (when-not (empty? visited)
-                          (pragma? line))]
+          novel-import? (and import (not (@visited import)))
+          skip-import?  (and import (not novel-import?))
+          skip-pragma?  (when-not (empty? @visited)
+                          (pragma? line))
+          skip?         (or skip-import? skip-pragma?)]
       (when import
         (clojure.pprint/pprint {:processing base-name
-                                :visited    visited
+                                :visited    @visited
                                 :import     import
-                                :seen?      (visited import)}))
-      (cond (not line)   acc
-
-            skip-pragma?  (recur (rest lines)
-                                 visited
+                                :seen?      (@visited import)}))
+      (cond (not line)    acc
+            skip?         (recur (rest lines)
                                  acc)       
-
             novel-import? (recur (rest lines)
-                                 (conj visited import)
-                                 (into acc (inline* idx import (conj visited import))))
-
-            :else         (recur (rest lines)
-                                 (conj visited base-name)
-                                 (conj acc (first lines)))))))
+                                 (into acc (inline* idx import visited)))
+            :else         (do (swap! visited conj base-name)
+                              (recur (rest lines)
+                                     (conj acc (first lines))))))))
 
 (defn inline [contracts-path base-file-name]
-  (inline* (map-contracts contracts-path) base-file-name #{}))
+  (inline* (map-contracts contracts-path) base-file-name (atom #{})))
 
-
-#_ (remove-ns 'solpp.import)
+#_ (map-contracts "/Users/craig/kwhcoin/solpp/contracts")
 #_ (inline "/Users/craig/kwhcoin/solpp/contracts"  "Top.sol")
