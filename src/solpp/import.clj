@@ -26,11 +26,6 @@
           skip-pragma?  (when-not (empty? @visited)
                           (pragma? line))
           skip?         (or skip-import? skip-pragma?)]
-      (when import
-        (clojure.pprint/pprint {:processing base-name
-                                :visited    @visited
-                                :import     import
-                                :seen?      (@visited import)}))
       (cond (not line)    acc
             skip?         (recur (rest lines)
                                  acc)       
@@ -41,7 +36,11 @@
                                      (conj acc (first lines))))))))
 
 (defn inline [contracts-path base-file-name]
-  (inline* (map-contracts contracts-path) base-file-name (atom #{})))
+  (apply str (interpose "\n" (inline* (map-contracts contracts-path) base-file-name (atom #{})))))
 
 #_ (map-contracts "/Users/craig/kwhcoin/solpp/contracts")
 #_ (inline "/Users/craig/kwhcoin/solpp/contracts"  "Top.sol")
+
+#_ (inline "/Users/craig/kwhcoin/other-repos/zeppelin-solidity/contracts" "SampleCrowdsale.sol")
+#_ (spit "/tmp/SampleCrowdsale.sol"
+         (inline "/Users/craig/kwhcoin/other-repos/zeppelin-solidity/contracts" "SampleCrowdsale.sol"))
